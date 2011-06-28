@@ -10,14 +10,13 @@
 @interface SVWebViewController (private)
 
 - (void)layoutSubviews;
-- (void)setupPhoneToolbar;
-- (void)setupTabletToolbar;
-
+- (void)setupToolbar;
 - (void)stopLoading;
 
 @end
 
 @implementation SVWebViewController
+@synthesize masterPopover;
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
 	
@@ -28,6 +27,7 @@
 		navItem = nil;
 		actionBarButton = nil;
 		stoppedLoading = YES;
+
 	}
 	
 	return self;
@@ -47,14 +47,20 @@
 	if (urlString) {
 		[urlString release];
 	}
+	self.masterPopover = nil;
 	
     [super dealloc];
 }
 
-- (void)viewDidLoadPhone {
+- (void)viewDidLoad {
+
+	[super viewDidLoad];
 	
 	CGRect deviceBounds = [[UIApplication sharedApplication] keyWindow].bounds;
 	CGFloat buttonWidth = 18.f;
+	
+	if (!deviceIsTablet) // if we're in a tab bar controller
+		self.hidesBottomBarWhenPushed = YES;
 	
 	backBarButton = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPhone/back"] 
 													 style:UIBarButtonItemStylePlain 
@@ -71,10 +77,13 @@
 	actionBarButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction 
 																	target:self 
 																	action:@selector(showActions)];
-	
+
+	toolbar.tintColor = [UIColor colorWithRed:0.301f green:0.353f blue:0.384f alpha:1.0];
+		
 	if(self.navigationController == nil) {
 		
 		UINavigationBar *navBar = [[UINavigationBar alloc] initWithFrame:CGRectMake(0,0,CGRectGetWidth(deviceBounds),44)];
+		navBar.tintColor = [UIColor colorWithRed:0.301f green:0.353f blue:0.384f alpha:1.0];
 		navBar.autoresizesSubviews = YES;
 		navBar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
 		
@@ -83,111 +92,16 @@
 																					action:@selector(dismissController)];
 		
 		rWebView.frame = CGRectMake(0, CGRectGetMaxY(navBar.frame), CGRectGetWidth(deviceBounds), CGRectGetMinY(toolbar.frame)-88);
-
+		
 		navItem = [[UINavigationItem alloc] initWithTitle:self.title];
 		[navBar setItems:[NSArray arrayWithObject:navItem] animated:YES];
 		[navItem setLeftBarButtonItem:doneButton animated:YES];
-
+		
 		[self.view addSubview:navBar];
 		
 		[doneButton release];
 		[navBar release];
 	}
-	
-}
-
-- (void)viewDidLoadTablet {
-	
-	CGRect deviceBounds = [[UIApplication sharedApplication] keyWindow].bounds;
-	UINavigationBar *navBar = nil;
-	
-	[toolbar removeFromSuperview];
-	
-	if(self.navigationController == nil) {
-		
-		navBar = [[[UINavigationBar alloc] initWithFrame:CGRectMake(0,0,CGRectGetWidth(deviceBounds),44)] autorelease];
-		navBar.autoresizesSubviews = YES;
-		navBar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-		[self.view addSubview:navBar];
-		
-		UIBarButtonItem *doneButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone 
-																					target:self 
-																					action:@selector(dismissController)];
-		UINavigationItem *tempItem = [[UINavigationItem alloc] initWithTitle:nil];
-		tempItem.leftBarButtonItem = doneButton;
-		
-		[navBar setItems:[NSArray arrayWithObject:tempItem] animated:YES];
-		
-		// I wish we could use (automatically localized) doneButton.title, but it's nil
-		titleLeftOffset = [@"Done" sizeWithFont:[UIFont boldSystemFontOfSize:12]].width+33;
-		[tempItem release];
-		[doneButton release];
-	}
-	
-	else {
-		
-		self.title = nil;
-		navBar = self.navigationController.navigationBar;
-		navBar.autoresizesSubviews = YES;
-		
-		NSArray* viewCtrlers = self.navigationController.viewControllers;
-		UIViewController* prevCtrler = [viewCtrlers objectAtIndex:[viewCtrlers count]-2];
-		titleLeftOffset = [prevCtrler.navigationItem.backBarButtonItem.title sizeWithFont:[UIFont boldSystemFontOfSize:12]].width+26;
-	}
-	
-	backButton = [UIButton buttonWithType:UIButtonTypeCustom];
-	[backButton setBackgroundImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPad/back"] forState:UIControlStateNormal];
-	backButton.frame = CGRectZero;
-	[backButton addTarget:rWebView action:@selector(goBack) forControlEvents:UIControlEventTouchUpInside];
-	backButton.adjustsImageWhenHighlighted = NO;
-	backButton.autoresizingMask = UIViewAutoresizingFlexibleRightMargin;
-	backButton.showsTouchWhenHighlighted = YES;
-	
-	forwardButton = [UIButton buttonWithType:UIButtonTypeCustom];
-	[forwardButton setBackgroundImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPad/forward"] forState:UIControlStateNormal];
-	forwardButton.frame = CGRectZero;
-	[forwardButton addTarget:rWebView action:@selector(goForward) forControlEvents:UIControlEventTouchUpInside];
-	forwardButton.adjustsImageWhenHighlighted = NO;
-	forwardButton.showsTouchWhenHighlighted = YES;
-	
-	actionButton = [UIButton buttonWithType:UIButtonTypeCustom];
-	[actionButton setBackgroundImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPad/action"] forState:UIControlStateNormal];
-	actionButton.frame = CGRectZero;
-	[actionButton addTarget:self action:@selector(showActions) forControlEvents:UIControlEventTouchUpInside];
-	actionButton.adjustsImageWhenHighlighted = NO;
-	actionButton.showsTouchWhenHighlighted = YES;
-	
-	refreshStopButton = [UIButton buttonWithType:UIButtonTypeCustom];
-	[refreshStopButton setBackgroundImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPad/refresh"] forState:UIControlStateNormal];
-	refreshStopButton.frame = CGRectZero;
-	refreshStopButton.adjustsImageWhenHighlighted = NO;
-	refreshStopButton.showsTouchWhenHighlighted = YES;
-	
-	titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-	titleLabel.font = [UIFont boldSystemFontOfSize:20];
-	titleLabel.textColor = [UIColor colorWithRed:0.42353 green:0.45098 blue:0.48235 alpha:1.];
-	titleLabel.shadowColor = [UIColor colorWithWhite:1 alpha:0.7];
-	titleLabel.backgroundColor = [UIColor clearColor];
-	titleLabel.lineBreakMode = UILineBreakModeTailTruncation;
-	titleLabel.textAlignment = UITextAlignmentRight;
-	titleLabel.shadowOffset = CGSizeMake(0, 1);
-	
-	[navBar addSubview:titleLabel];	
-	[navBar addSubview:refreshStopButton];	
-	[navBar addSubview:backButton];	
-	[navBar addSubview:forwardButton];	
-	[navBar addSubview:actionButton];
-	
-}
-
-- (void)viewDidLoad {
-	
-	[super viewDidLoad];
-		
-	if(!deviceIsTablet)
-		[self viewDidLoadPhone];
-	else
-		[self viewDidLoadTablet];
 	
 }
 
@@ -212,12 +126,7 @@
 		[actionBarButton release];
 		actionBarButton = nil;
 	}
-	
-	if (titleLabel) {
-		[titleLabel release];
-		titleLabel = nil;
-	}
-	
+		
 	[super viewDidUnload];
 }
 
@@ -230,28 +139,9 @@
 		[rWebView loadRequest:[NSURLRequest requestWithURL:searchURL]];
 	}
 	
-	if(!deviceIsTablet)
-		[self setupPhoneToolbar];
-	else
-		[self setupTabletToolbar];
+	[self setupToolbar];
 	
 	[self layoutSubviews];
-	
-	if(deviceIsTablet && self.navigationController) {
-		titleLabel.alpha = 0;
-		refreshStopButton.alpha = 0;
-		backButton.alpha = 0;
-		forwardButton.alpha = 0;
-		actionButton.alpha = 0;
-		
-		[UIView animateWithDuration:0.3 animations:^{
-			titleLabel.alpha = 1;
-			refreshStopButton.alpha = 1;
-			backButton.alpha = 1;
-			forwardButton.alpha = 1;
-			actionButton.alpha = 1;
-		}];
-	}
 	
 }
 
@@ -263,16 +153,6 @@
 
 	[self stopLoading];
 	
-	if(deviceIsTablet && self.navigationController) {
-		[UIView animateWithDuration:0.3 animations:^{
-			titleLabel.alpha = 0;
-			refreshStopButton.alpha = 0;
-			backButton.alpha = 0;
-			forwardButton.alpha = 0;
-			actionButton.alpha = 0;
-		}];
-	}
-	
 }
 
 #pragma mark -
@@ -282,29 +162,15 @@
 	
 	CGRect deviceBounds = self.view.bounds;
 	
-	if (deviceIsTablet) {
-		if(self.navigationController)
-			rWebView.frame = CGRectMake(0, 0, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds));
-		else
-			rWebView.frame = CGRectMake(0, 44, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-44);
-		
-		backButton.frame = CGRectMake(CGRectGetWidth(deviceBounds)-180, 0, 44, 44);
-		forwardButton.frame = CGRectMake(CGRectGetWidth(deviceBounds)-120, 0, 44, 44);
-		actionButton.frame = CGRectMake(CGRectGetWidth(deviceBounds)-60, 0, 44, 44);
-		refreshStopButton.frame = CGRectMake(CGRectGetWidth(deviceBounds)-240, 0, 44, 44);
-		titleLabel.frame = CGRectMake(titleLeftOffset, 0, CGRectGetWidth(deviceBounds)-240-titleLeftOffset-5, 44);
-	}
-	else {
-		if(self.navigationController)
-			rWebView.frame = CGRectMake(0, 0, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-44);
-		else
-			rWebView.frame = CGRectMake(0, 44, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-88);
-	}
+	if(self.navigationController)
+		rWebView.frame = CGRectMake(0, 0, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-44);
+	else
+		rWebView.frame = CGRectMake(0, 44, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-88);
 	
 }
 
 
-- (void)setupPhoneToolbar {
+- (void)setupToolbar {
 	
 	NSString *evalString = [rWebView stringByEvaluatingJavaScriptFromString:@"document.title"];
 	
@@ -338,41 +204,14 @@
 	UIBarButtonItem *flSeparator = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
 	flSeparator.enabled = NO;
 	
-	NSArray *newButtons = [[NSArray alloc] initWithObjects:backBarButton, flSeparator, forwardBarButton, flSeparator, refreshStopBarButton, flSeparator, actionBarButton, nil];
+	NSArray *newButtons = [[NSArray alloc] initWithObjects:flSeparator, backBarButton, flSeparator, 
+						   refreshStopBarButton, flSeparator, forwardBarButton, flSeparator, actionBarButton, nil];
 	[toolbar setItems:newButtons];
 	
 	[refreshStopBarButton release];
 	[flSeparator release];
 	[newButtons release];
-	
-}
 
-
-- (void)setupTabletToolbar {
-	
-	titleLabel.text = [rWebView stringByEvaluatingJavaScriptFromString:@"document.title"];
-	
-	if(![rWebView canGoBack])
-		backButton.enabled = NO;
-	else
-		backButton.enabled = YES;
-	
-	if(![rWebView canGoForward])
-		forwardButton.enabled = NO;
-	else
-		forwardButton.enabled = YES;
-	
-	if(rWebView.loading && !stoppedLoading) {
-		[refreshStopButton removeTarget:rWebView action:@selector(reload) forControlEvents:UIControlEventTouchUpInside];
-		[refreshStopButton addTarget:self action:@selector(stopLoading) forControlEvents:UIControlEventTouchUpInside];
-		[refreshStopButton setBackgroundImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPad/stop"] forState:UIControlStateNormal];
-	}
-	else {
-		[refreshStopButton removeTarget:self action:@selector(stopLoading) forControlEvents:UIControlEventTouchUpInside];
-		[refreshStopButton addTarget:rWebView action:@selector(reload) forControlEvents:UIControlEventTouchUpInside];
-		[refreshStopButton setBackgroundImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPad/refresh"] forState:UIControlStateNormal];
-	}
-	
 }
 
 
@@ -396,10 +235,7 @@
 	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
 	stoppedLoading = NO;
 
-	if(!deviceIsTablet)
-		[self setupPhoneToolbar];
-	else
-		[self setupTabletToolbar];
+	[self setupToolbar];
 	
 }
 
@@ -409,11 +245,8 @@
 	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
 	stoppedLoading = YES;
 
-	if(!deviceIsTablet)
-		[self setupPhoneToolbar];
-	else
-		[self setupTabletToolbar];
-	
+	[self setupToolbar];
+
 }
 
 - (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error {
@@ -432,10 +265,7 @@
 
 	[rWebView stopLoading];
 	
-	if(!deviceIsTablet)
-		[self setupPhoneToolbar];
-	else
-		[self setupTabletToolbar];
+	[self setupToolbar];
 	
 }
 
@@ -457,12 +287,8 @@
 	
 	if (actionBarButton)
 		[actionSheet showFromBarButtonItem:actionBarButton animated:YES];
-	else if(!deviceIsTablet)
+	else
 		[actionSheet showFromToolbar:toolbar];
-	else if(!self.navigationController)
-		[actionSheet showFromRect:CGRectOffset(actionButton.frame, 0, -5) inView:self.view animated:YES];
-	else if(self.navigationController)
-		[actionSheet showFromRect:CGRectOffset(actionButton.frame, 0, -49) inView:self.view animated:YES];
 	
 	[actionSheet release];
 	
@@ -512,6 +338,10 @@
 
 - (void)setAddress:(NSString *)newAddress {
 
+	if (masterPopover) {
+		[masterPopover dismissPopoverAnimated:YES];
+	}
+	
 	[self willChangeValueForKey: @"address"];
 	if (urlString) {
 		[urlString release];
@@ -528,5 +358,27 @@
 	}
 	
 }
+
+#pragma mark -
+#pragma mark Popover Support
+
+- (void)splitViewController: (UISplitViewController*)svc willHideViewController:(UIViewController *)aViewController withBarButtonItem:(UIBarButtonItem*)barButtonItem forPopoverController: (UIPopoverController*)pc {
+    barButtonItem.title = NSLocalizedString(@"Resources", @"The short title for web view popover");
+    [self.navigationItem setRightBarButtonItem:barButtonItem animated:YES];
+    self.masterPopover = pc;
+}
+
+
+// Called when the view is shown again in the split view, invalidating the button and popover controller.
+- (void)splitViewController: (UISplitViewController*)svc willShowViewController:(UIViewController *)aViewController invalidatingBarButtonItem:(UIBarButtonItem *)barButtonItem {
+	if (self.navigationItem)
+		[self.navigationItem setRightBarButtonItem:nil animated:YES];
+    self.masterPopover = nil;
+}
+
+- (void) splitViewController:(UISplitViewController *)svc popoverController: (UIPopoverController *)pc
+   willPresentViewController: (UIViewController *)aViewController
+{
+}	
 
 @end

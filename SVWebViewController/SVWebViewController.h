@@ -12,19 +12,14 @@
 	IBOutlet UIWebView *rWebView;
 	NSString *urlString;
 	
-	// iPhone UI
 	UINavigationItem *navItem;
 	IBOutlet UIBarButtonItem *backBarButton, *forwardBarButton, *actionBarButton;
 	IBOutlet UIToolbar *toolbar;
 	
-	// iPad UI
-	UIButton *backButton, *forwardButton, *refreshStopButton, *actionButton;
-	UILabel *titleLabel;
-	CGFloat titleLeftOffset;
-	
 	BOOL deviceIsTablet, stoppedLoading;
 }
 
+@property (nonatomic,retain) UIPopoverController *masterPopover;
 @property (nonatomic, assign) NSString *address;
 - (id)initWithAddress:(NSString*)string;
 

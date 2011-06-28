@@ -48,6 +48,11 @@
     // Relinquish ownership any cached data, images, etc that aren't in use.
 }
 
+- (void)viewDidLoad {
+	[super viewDidLoad];
+	self.navigationController.navigationBar.tintColor = [UIColor colorWithRed:0.301f green:0.353f blue:0.384f alpha:1.0];
+}
+
 - (void)viewDidUnload {
     // Relinquish ownership of anything that can be recreated in viewDidLoad or on demand.
     // For example: self.myOutlet = nil;
