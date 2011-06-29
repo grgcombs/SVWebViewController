@@ -9,7 +9,7 @@
 
 @interface SVWebViewController (private)
 
-- (void)layoutSubviews;
+- (void)layoutWebview;
 - (void)setupToolbar;
 - (void)stopLoading;
 
@@ -35,7 +35,7 @@
 
 - (id)initWithAddress:(NSString*)string {
 	
-	if ([self initWithNibName:@"SVWebViewController" bundle:[NSBundle mainBundle]]) {
+	if ([self initWithNibName:@"SVWebViewController" bundle:nil]) {
 		urlString = [string copy];	
 	}
 		
@@ -47,6 +47,27 @@
 	if (urlString) {
 		[urlString release];
 	}
+	
+	if (navItem) {
+		[navItem release];
+		navItem = nil;
+	}
+	
+	if (backBarButton) {
+		[backBarButton release];
+		backBarButton = nil;
+	}
+	
+	if (forwardBarButton) {
+		[forwardBarButton release];
+		forwardBarButton = nil;
+	}
+	
+	if (actionBarButton) {
+		[actionBarButton release];
+		actionBarButton = nil;
+	}
+	
 	self.masterPopover = nil;
 	
     [super dealloc];
@@ -56,6 +77,7 @@
 
 	[super viewDidLoad];
 	
+	rWebView.delegate = self;
 	CGRect deviceBounds = [[UIApplication sharedApplication] keyWindow].bounds;
 	CGFloat buttonWidth = 18.f;
 	
@@ -132,7 +154,9 @@
 
 - (void)viewWillAppear:(BOOL)animated {
 	
-	[super viewWillAppear:YES];
+	[super viewWillAppear:animated];
+	
+	rWebView.delegate = self;
 	
 	if (urlString && [urlString length]) {
 		NSURL *searchURL = [NSURL URLWithString:urlString];
@@ -141,36 +165,41 @@
 	
 	[self setupToolbar];
 	
-	[self layoutSubviews];
+	[self layoutWebview];
 	
 }
 
 
 
 - (void)viewWillDisappear:(BOOL)animated {
-	
-	[super viewWillDisappear:animated];
 
 	[self stopLoading];
+	rWebView.delegate = nil;
+	
+	[super viewWillDisappear:animated];
 	
 }
 
 #pragma mark -
 #pragma mark Layout Methods
 
-- (void)layoutSubviews {
-	
-	CGRect deviceBounds = self.view.bounds;
-	
-	if(self.navigationController)
-		rWebView.frame = CGRectMake(0, 0, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-44);
-	else
-		rWebView.frame = CGRectMake(0, 44, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-88);
-	
+- (void)layoutWebview {	
+	if (rWebView) {
+		CGRect deviceBounds = [[UIApplication sharedApplication] keyWindow].bounds;
+		if (self.view)
+			deviceBounds = self.view.bounds;
+		
+		if(self.navigationController)
+			rWebView.frame = CGRectMake(0, 0, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-44);
+		else
+			rWebView.frame = CGRectMake(0, 44, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-88);
+	}
 }
 
 
 - (void)setupToolbar {
+	if (!rWebView)
+		return;
 	
 	NSString *evalString = [rWebView stringByEvaluatingJavaScriptFromString:@"document.title"];
 	
@@ -204,13 +233,20 @@
 	UIBarButtonItem *flSeparator = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
 	flSeparator.enabled = NO;
 	
-	NSArray *newButtons = [[NSArray alloc] initWithObjects:flSeparator, backBarButton, flSeparator, 
+	NSArray *newButtons = nil;
+	if (urlString && [urlString length] && [urlString hasPrefix:@"file://"]) {	// it's an internal/local web page
+		newButtons = [[NSArray alloc] initWithObjects:flSeparator, backBarButton, flSeparator, 
+							   refreshStopBarButton, flSeparator, forwardBarButton, flSeparator, nil];
+	}
+	else {
+		newButtons = [[NSArray alloc] initWithObjects:flSeparator, backBarButton, flSeparator, 
 						   refreshStopBarButton, flSeparator, forwardBarButton, flSeparator, actionBarButton, nil];
-	[toolbar setItems:newButtons];
+	}
+	[toolbar setItems:newButtons animated:YES];
+	[newButtons release];
 	
 	[refreshStopBarButton release];
 	[flSeparator release];
-	[newButtons release];
 
 }
 
@@ -223,7 +259,7 @@
 }
 
 - (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation duration:(NSTimeInterval)duration {
-	[self layoutSubviews];
+	[self layoutWebview];
 }
 
 
