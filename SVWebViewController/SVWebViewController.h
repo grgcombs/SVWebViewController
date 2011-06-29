@@ -9,18 +9,29 @@
 
 
 @interface SVWebViewController : UIViewController <UIWebViewDelegate, UIActionSheetDelegate, MFMailComposeViewControllerDelegate> {
-	IBOutlet UIWebView *rWebView;
+	UIWebView *_webView;
 	NSString *urlString;
 	
 	UINavigationItem *navItem;
 	IBOutlet UIBarButtonItem *backBarButton, *forwardBarButton, *actionBarButton;
-	IBOutlet UIToolbar *toolbar;
+	UIToolbar *_toolbar;
 	
-	BOOL deviceIsTablet, stoppedLoading;
+	UIViewController *modalParentVC;
+	BOOL deviceIsTablet, stoppedLoading, isQuitting;
 }
 
+@property (nonatomic,retain) IBOutlet UIToolbar *toolbar;
+@property (nonatomic,retain) IBOutlet UIWebView *webView;
+@property (nonatomic,assign) UIViewController *modalParentVC;
 @property (nonatomic,retain) UIPopoverController *masterPopover;
-@property (nonatomic, assign) NSString *address;
+@property (nonatomic,assign) NSString *address;
 - (id)initWithAddress:(NSString*)string;
+
+@end
+
+@interface UIViewController (SVWebViewControllerAdditions) {
+}
+
+- (void) presentWebViewControllerWithURL:(NSString *)url;
 
 @end

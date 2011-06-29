@@ -15,19 +15,41 @@
 
 @end
 
+@implementation UIViewController (SVWebViewControllerAdditions)
+
+- (void) presentWebViewControllerWithURL:(NSString *)url {
+	SVWebViewController *browser = [[SVWebViewController alloc] initWithAddress:url];
+	
+	if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+		browser.modalPresentationStyle = UIModalPresentationPageSheet;
+	}
+	else {
+		browser.modalPresentationStyle = UIModalPresentationCurrentContext;
+	}
+	
+	browser.modalParentVC = self;
+	[self presentModalViewController:browser animated:YES];
+	[browser release];	
+}
+
+@end
+
 @implementation SVWebViewController
 @synthesize masterPopover;
+@synthesize modalParentVC;
+@synthesize webView = _webView;
+@synthesize toolbar = _toolbar;
 
-- (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
-	
-	if ((self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil])) {
+- (id)init {
+	if ((self = [super init])) {
 		
 		deviceIsTablet = (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad);
 		urlString = nil;
 		navItem = nil;
 		actionBarButton = nil;
 		stoppedLoading = YES;
-
+		isQuitting = NO;
+		
 	}
 	
 	return self;
@@ -35,7 +57,7 @@
 
 - (id)initWithAddress:(NSString*)string {
 	
-	if ([self initWithNibName:@"SVWebViewController" bundle:nil]) {
+	if ((self = [self init])) {
 		urlString = [string copy];	
 	}
 		
@@ -43,9 +65,21 @@
 }
 
 - (void)dealloc {
+	stoppedLoading = YES;
+	
+	if (_webView) {
+		_webView.delegate = nil;
+		if (_webView.loading) {
+			[_webView stopLoading];	
+		}
+		[_webView release];
+		_webView = nil;
+	}
+	
 	
 	if (urlString) {
 		[urlString release];
+		urlString = nil;
 	}
 	
 	if (navItem) {
@@ -68,16 +102,64 @@
 		actionBarButton = nil;
 	}
 	
+	self.toolbar = nil;
 	self.masterPopover = nil;
 	
     [super dealloc];
+}
+
+- (void)loadView {
+	[super loadView];
+	
+	UIWebView *webview1 = [[UIWebView alloc] initWithFrame:CGRectMake(0.0, 0.0, 320.0, 372.0)];
+	webview1.autoresizesSubviews = YES;
+	webview1.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+	webview1.clearsContextBeforeDrawing = YES;
+	webview1.clipsToBounds = NO;
+	webview1.contentMode = UIViewContentModeScaleToFill;
+	webview1.multipleTouchEnabled = YES;
+	webview1.opaque = YES;
+	webview1.scalesPageToFit = YES;
+	webview1.delegate = self;
+	self.webView = webview1;
+	
+	
+	UIToolbar *tool = [[UIToolbar alloc] initWithFrame:CGRectMake(0.0, 372.0, 320.0, 44.0)];
+	tool.frame = CGRectMake(0.0, 372.0, 320.0, 44.0);
+	tool.autoresizesSubviews = YES;
+	tool.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
+	tool.clearsContextBeforeDrawing = NO;
+	tool.clipsToBounds = NO;
+	tool.contentMode = UIViewContentModeScaleToFill;
+	tool.multipleTouchEnabled = NO;
+	tool.opaque = NO;
+	tool.tintColor = [UIColor colorWithRed:0.301f green:0.353f blue:0.384f alpha:1.0];
+	self.toolbar = tool;
+
+	//UIView *view = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 320.0, 416.0)];
+	self.view.frame = CGRectMake(0.0, 0.0, 320.0, 416.0);
+	self.view.autoresizesSubviews = YES;
+	self.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+	self.view.clearsContextBeforeDrawing = YES;
+	self.view.clipsToBounds = NO;
+	self.view.contentMode = UIViewContentModeScaleToFill;
+	self.view.multipleTouchEnabled = NO;
+	self.view.opaque = YES;
+	
+	[self.view addSubview:tool];
+	[self.view addSubview:webview1];
+	
+	[webview1 release];
+	[tool release];
+
 }
 
 - (void)viewDidLoad {
 
 	[super viewDidLoad];
 	
-	rWebView.delegate = self;
+	isQuitting = NO;
+	self.webView.delegate = self;
 	CGRect deviceBounds = [[UIApplication sharedApplication] keyWindow].bounds;
 	CGFloat buttonWidth = 18.f;
 	
@@ -86,21 +168,19 @@
 	
 	backBarButton = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPhone/back"] 
 													 style:UIBarButtonItemStylePlain 
-													target:rWebView 
+													target:self.webView 
 													action:@selector(goBack)];
 	backBarButton.width = buttonWidth;
 	
 	forwardBarButton = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPhone/forward"] 
 														style:UIBarButtonItemStylePlain 
-													   target:rWebView 
+													   target:self.webView 
 													   action:@selector(goForward)];
 	forwardBarButton.width = buttonWidth;
 	
 	actionBarButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction 
 																	target:self 
 																	action:@selector(showActions)];
-
-	toolbar.tintColor = [UIColor colorWithRed:0.301f green:0.353f blue:0.384f alpha:1.0];
 		
 	if(self.navigationController == nil) {
 		
@@ -108,12 +188,12 @@
 		navBar.tintColor = [UIColor colorWithRed:0.301f green:0.353f blue:0.384f alpha:1.0];
 		navBar.autoresizesSubviews = YES;
 		navBar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-		
+					
 		UIBarButtonItem *doneButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone 
 																					target:self 
 																					action:@selector(dismissController)];
 		
-		rWebView.frame = CGRectMake(0, CGRectGetMaxY(navBar.frame), CGRectGetWidth(deviceBounds), CGRectGetMinY(toolbar.frame)-88);
+		self.webView.frame = CGRectMake(0, CGRectGetMaxY(navBar.frame), CGRectGetWidth(deviceBounds), CGRectGetMinY(self.toolbar.frame)-88);
 		
 		navItem = [[UINavigationItem alloc] initWithTitle:self.title];
 		[navBar setItems:[NSArray arrayWithObject:navItem] animated:YES];
@@ -129,6 +209,8 @@
 
 - (void)viewDidUnload {
 	
+	isQuitting = YES;
+	
 	if (navItem) {
 		[navItem release];
 		navItem = nil;
@@ -148,7 +230,17 @@
 		[actionBarButton release];
 		actionBarButton = nil;
 	}
-		
+	
+	stoppedLoading = YES;
+	self.toolbar = nil;
+	if (_webView) {
+		_webView.delegate = nil;
+		if (_webView.loading) {
+			[_webView stopLoading];	
+		}
+		[_webView release];
+		_webView = nil;
+	}
 	[super viewDidUnload];
 }
 
@@ -156,11 +248,12 @@
 	
 	[super viewWillAppear:animated];
 	
-	rWebView.delegate = self;
+	isQuitting = NO;
 	
-	if (urlString && [urlString length]) {
+	if (urlString && [urlString length] && _webView) {
 		NSURL *searchURL = [NSURL URLWithString:urlString];
-		[rWebView loadRequest:[NSURLRequest requestWithURL:searchURL]];
+		_webView.delegate = self;
+		[_webView loadRequest:[NSURLRequest requestWithURL:searchURL]];
 	}
 	
 	[self setupToolbar];
@@ -173,9 +266,14 @@
 
 - (void)viewWillDisappear:(BOOL)animated {
 
-	[self stopLoading];
-	rWebView.delegate = nil;
-	
+	isQuitting = YES;
+	stoppedLoading = YES;
+	if (_webView) {
+		_webView.delegate = nil;
+		if (_webView.loading) {
+			[_webView stopLoading];	
+		}
+	}		
 	[super viewWillDisappear:animated];
 	
 }
@@ -184,49 +282,48 @@
 #pragma mark Layout Methods
 
 - (void)layoutWebview {	
-	if (rWebView) {
-		CGRect deviceBounds = [[UIApplication sharedApplication] keyWindow].bounds;
-		if (self.view)
-			deviceBounds = self.view.bounds;
+	if (_webView) {
+		//CGRect deviceBounds = [[UIApplication sharedApplication] keyWindow].bounds;
+		CGRect deviceBounds = self.view.bounds;
 		
 		if(self.navigationController)
-			rWebView.frame = CGRectMake(0, 0, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-44);
+			_webView.frame = CGRectMake(0, 0, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-44);
 		else
-			rWebView.frame = CGRectMake(0, 44, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-88);
+			_webView.frame = CGRectMake(0, 44, CGRectGetWidth(deviceBounds), CGRectGetHeight(deviceBounds)-88);
 	}
 }
 
 
 - (void)setupToolbar {
-	if (!rWebView)
+	if (!_webView || isQuitting)
 		return;
 	
-	NSString *evalString = [rWebView stringByEvaluatingJavaScriptFromString:@"document.title"];
+	NSString *evalString = [_webView stringByEvaluatingJavaScriptFromString:@"document.title"];
 	
 	if(self.navigationController != nil)
 		self.navigationItem.title = evalString;
 	else if (navItem)
 		navItem.title = evalString;
 	
-	if(![rWebView canGoBack])
+	if(![_webView canGoBack])
 		backBarButton.enabled = NO;
 	else
 		backBarButton.enabled = YES;
 
-	if(![rWebView canGoForward])
+	if(![_webView canGoForward])
 		forwardBarButton.enabled = NO;
 	else
 		forwardBarButton.enabled = YES;
 		
 	UIBarButtonItem *refreshStopBarButton = nil;
-	if(rWebView.loading && !stoppedLoading) {
+	if(_webView.loading && !stoppedLoading) {
 		refreshStopBarButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemStop 
 																			 target:self 
 																			 action:@selector(stopLoading)];
 	}		
 	else {
 		refreshStopBarButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemRefresh 
-																			 target:rWebView 
+																			 target:_webView 
 																			 action:@selector(reload)];
 	}
 		
@@ -242,7 +339,7 @@
 		newButtons = [[NSArray alloc] initWithObjects:flSeparator, backBarButton, flSeparator, 
 						   refreshStopBarButton, flSeparator, forwardBarButton, flSeparator, actionBarButton, nil];
 	}
-	[toolbar setItems:newButtons animated:YES];
+	[self.toolbar setItems:newButtons animated:YES];
 	[newButtons release];
 	
 	[refreshStopBarButton release];
@@ -259,14 +356,17 @@
 }
 
 - (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation duration:(NSTimeInterval)duration {
-	[self layoutWebview];
+	if (!isQuitting)
+		[self layoutWebview];
 }
 
 
 #pragma mark -
 #pragma mark UIWebViewDelegate
 
-- (void)webViewDidStartLoad:(UIWebView *)webView {
+- (void)webViewDidStartLoad:(UIWebView *)aWebView {
+	if (!self || NO == [self isViewLoaded])
+		return;
 	
 	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
 	stoppedLoading = NO;
@@ -275,9 +375,11 @@
 	
 }
 
+- (void)webViewDidFinishLoad:(UIWebView *)aWebView {
+	if (!self || NO == [self isViewLoaded])
+		return;
 
-- (void)webViewDidFinishLoad:(UIWebView *)webView {
-	
+	aWebView.delegate = nil;
 	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
 	stoppedLoading = YES;
 
@@ -285,7 +387,12 @@
 
 }
 
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error {
+- (void)webView:(UIWebView *)aWebView didFailLoadWithError:(NSError *)error {
+	aWebView.delegate = nil;
+	
+	if (!self || NO == [self isViewLoaded])
+		return;
+	
 	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
 	stoppedLoading = YES;
 }
@@ -299,40 +406,53 @@
 	[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
 	stoppedLoading = YES;
 
-	[rWebView stopLoading];
-	
+	if (_webView) {
+		_webView.delegate = nil;
+		[_webView stopLoading];
+	}
 	[self setupToolbar];
 	
 }
 
 - (void)showActions {
 	
-	UIActionSheet *actionSheet = [[UIActionSheet alloc] 
-						  initWithTitle: nil
-						  delegate: self 
-						  cancelButtonTitle: nil   
-						  destructiveButtonTitle: nil   
-						  otherButtonTitles: NSLocalizedString(@"Open in Safari", @"Action sheet button"), nil]; 
-	
-	
-	if([MFMailComposeViewController canSendMail])
-		[actionSheet addButtonWithTitle:NSLocalizedString(@"Email this", @"Action sheet button")];
-	
-	[actionSheet addButtonWithTitle:NSLocalizedString(@"Cancel", @"Action sheet button")];
-	actionSheet.cancelButtonIndex = [actionSheet numberOfButtons]-1;
-	
-	if (actionBarButton)
-		[actionSheet showFromBarButtonItem:actionBarButton animated:YES];
-	else
-		[actionSheet showFromToolbar:toolbar];
-	
-	[actionSheet release];
+	if (_webView.request.URL && [[UIApplication sharedApplication] canOpenURL:_webView.request.URL]) {
+		UIActionSheet *actionSheet = [[UIActionSheet alloc] 
+							  initWithTitle: nil
+							  delegate: self 
+							  cancelButtonTitle: nil   
+							  destructiveButtonTitle: nil   
+							  otherButtonTitles: NSLocalizedString(@"Open in Safari", @"Action sheet button"), nil]; 
+		
+		
+		if([MFMailComposeViewController canSendMail])
+			[actionSheet addButtonWithTitle:NSLocalizedString(@"Email this", @"Action sheet button")];
+		
+		[actionSheet addButtonWithTitle:NSLocalizedString(@"Cancel", @"Action sheet button")];
+		actionSheet.cancelButtonIndex = [actionSheet numberOfButtons]-1;
+		
+		if (actionBarButton)
+			[actionSheet showFromBarButtonItem:actionBarButton animated:YES];
+		else
+			[actionSheet showFromToolbar:self.toolbar];
+		
+		[actionSheet release];
+	}
 	
 }
 
 
 - (void)dismissController {
-	[self dismissModalViewControllerAnimated:YES];
+	isQuitting = YES;
+	
+	if (_webView)
+		_webView.delegate = nil;
+	
+	UIViewController *parent = self.modalParentVC;
+	if (!parent)
+		parent = self.parentViewController; //???
+	
+	[parent dismissModalViewControllerAnimated:YES];
 }
 
 #pragma mark -
@@ -341,15 +461,15 @@
 - (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
 	
 	if([[actionSheet buttonTitleAtIndex:buttonIndex] isEqualToString:NSLocalizedString(@"Open in Safari", @"Action sheet button")])
-		[[UIApplication sharedApplication] openURL:rWebView.request.URL];
+		[[UIApplication sharedApplication] openURL:self.webView.request.URL];
 	
 	else if([[actionSheet buttonTitleAtIndex:buttonIndex] isEqualToString:NSLocalizedString(@"Email this", @"Action sheet button")]) {
 		
 		MFMailComposeViewController *emailComposer = [[MFMailComposeViewController alloc] init]; 
 		
 		[emailComposer setMailComposeDelegate: self]; 
-		[emailComposer setSubject:[rWebView stringByEvaluatingJavaScriptFromString:@"document.title"]];
-		[emailComposer setMessageBody:rWebView.request.URL.absoluteString isHTML:NO];
+		[emailComposer setSubject:[self.webView stringByEvaluatingJavaScriptFromString:@"document.title"]];
+		[emailComposer setMessageBody:self.webView.request.URL.absoluteString isHTML:NO];
 		emailComposer.modalPresentationStyle = UIModalPresentationFormSheet;
 		
 		[self presentModalViewController:emailComposer animated:YES];
@@ -388,9 +508,10 @@
 	if (![self isViewLoaded])
 		return;
 
-	if (urlString && [urlString length]) {
+	if (urlString && [urlString length] && _webView) {
+		_webView.delegate = self;
 		NSURL *searchURL = [NSURL URLWithString:urlString];
-		[rWebView loadRequest:[NSURLRequest requestWithURL:searchURL]];
+		[_webView loadRequest:[NSURLRequest requestWithURL:searchURL]];
 	}
 	
 }
