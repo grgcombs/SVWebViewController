@@ -233,7 +233,8 @@
     if(self.modalViewController)
         return;
     
-    [self.navigationController setToolbarHidden:YES animated:YES];
+    if (self.navigationController)
+        [self.navigationController setToolbarHidden:YES animated:YES];
     
     if(deviceIsTablet && self.navigationController) {
 		[UIView animateWithDuration:0.3 animations:^{
@@ -299,7 +300,7 @@
         [doneButton release];
     }
     
-	if(self.navigationController != nil)
+	if(self.navigationController)
 		self.navigationItem.title = [self.webView stringByEvaluatingJavaScriptFromString:@"document.title"];
 	else
 		navItem.title = [self.webView stringByEvaluatingJavaScriptFromString:@"document.title"];
@@ -494,7 +495,9 @@
         
 		emailComposer.modalPresentationStyle = UIModalPresentationFormSheet;
 		
-		[self presentModalViewController:emailComposer animated:YES];
+        UIViewController * rootVC = [[[UIApplication sharedApplication] keyWindow] rootViewController];
+        [rootVC presentModalViewController:emailComposer animated:YES];
+
 		[emailComposer release];
 	}
 	
