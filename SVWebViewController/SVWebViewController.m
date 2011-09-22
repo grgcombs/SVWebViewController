@@ -33,7 +33,7 @@
     [super dealloc];
 }
 
-- (id)initWithAddress:(NSString*)string {
+- (SVWebViewController*)initWithAddress:(NSString*)string {
 	
 	self = [super initWithNibName:nil bundle:[NSBundle mainBundle]];
 
