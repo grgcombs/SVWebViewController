@@ -7,7 +7,8 @@
 
 #import <MessageUI/MessageUI.h>
 
-@interface SVWebViewController : UIViewController <UISplitViewControllerDelegate, UIWebViewDelegate, UIActionSheetDelegate, MFMailComposeViewControllerDelegate> {
+
+@interface SVWebViewController : UIViewController <UIWebViewDelegate, UIActionSheetDelegate, MFMailComposeViewControllerDelegate> {
 	UIWebView *rWebView;
     UINavigationBar *navBar;
     UIToolbar *toolbar;
@@ -26,8 +27,6 @@
 
 @property (nonatomic, retain) UIWebView *webView;
 @property (nonatomic, retain) NSString *urlString;
-@property (nonatomic, assign) NSString *address;
-@property (nonatomic, retain) UIPopoverController *masterPopover;
 
 - (SVWebViewController*)initWithAddress:(NSString*)string;
 
