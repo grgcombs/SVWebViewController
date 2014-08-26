@@ -177,8 +177,8 @@
 		titleLabel.textColor = [UIColor colorWithRed:0.42353 green:0.45098 blue:0.48235 alpha:1.];
 		titleLabel.shadowColor = [UIColor colorWithWhite:1 alpha:0.7];
 		titleLabel.backgroundColor = [UIColor clearColor];
-		titleLabel.lineBreakMode = UILineBreakModeTailTruncation;
-		titleLabel.textAlignment = UITextAlignmentRight;
+		titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+		titleLabel.textAlignment = NSTextAlignmentRight;
 		titleLabel.shadowOffset = CGSizeMake(0, 1);
 
 		[navBar addSubview:titleLabel];	
@@ -201,7 +201,7 @@
 	[self layoutSubviews];
     
     
-    if(self.modalViewController)
+    if(self.presentedViewController)
         return;
     
     if (self.urlString) {
@@ -230,7 +230,7 @@
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     
-    if(self.modalViewController)
+    if(self.presentedViewController)
         return;
     
     [self.navigationController setToolbarHidden:YES animated:YES];
@@ -250,7 +250,7 @@
 - (void)viewDidDisappear:(BOOL)animated {
 	[super viewDidDisappear:animated];
 	
-    if(self.modalViewController)
+    if(self.presentedViewController)
         return;
     
 	[self stopLoading];
@@ -471,7 +471,7 @@
 
 
 - (void)dismissController {
-	[self dismissModalViewControllerAnimated:YES];
+	[self dismissViewControllerAnimated:YES completion:nil];
 }
 
 #pragma mark -
@@ -494,7 +494,7 @@
         
 		emailComposer.modalPresentationStyle = UIModalPresentationFormSheet;
 		
-		[self presentModalViewController:emailComposer animated:YES];
+		[self dismissViewControllerAnimated:YES completion:nil];
 		[emailComposer release];
 	}
 	
@@ -504,7 +504,7 @@
 #pragma mark MFMailComposeViewControllerDelegate
 
 - (void)mailComposeController:(MFMailComposeViewController *)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError *)error {
-	[controller dismissModalViewControllerAnimated:YES];
+	[controller dismissViewControllerAnimated:YES completion:nil];
 }
 
 #pragma mark -
