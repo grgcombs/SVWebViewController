@@ -119,7 +119,7 @@
 			
 			UIBarButtonItem *doneButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(dismissController)];
 			
-			navItem = [[UINavigationItem alloc] initWithTitle:nil];
+			navItem = [[UINavigationItem alloc] initWithTitle:@""];
 			navItem.leftBarButtonItem = doneButton;
 			[doneButton release];
 			
