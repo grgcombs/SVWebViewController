@@ -29,6 +29,6 @@
 @property (nonatomic, assign) NSString *address;
 @property (nonatomic, retain) UIPopoverController *masterPopover;
 
-- (id)initWithAddress:(NSString*)string;
+- (instancetype)initWithAddress:(NSString*)string;
 
 @end

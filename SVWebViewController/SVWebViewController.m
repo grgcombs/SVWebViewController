@@ -33,8 +33,8 @@
     [super dealloc];
 }
 
-- (id)initWithAddress:(NSString*)string {
-	
+- (instancetype)initWithAddress:(NSString*)string
+{
 	self = [super initWithNibName:nil bundle:[NSBundle mainBundle]];
 
 	self.urlString = string;
@@ -56,7 +56,7 @@
         [masterPopover dismissPopoverAnimated:YES];
     }
 	
-	if ([self isViewLoaded] && rWebView && url && [url length]) {
+	if (self.viewLoaded && rWebView && url && url.length) {
         NSURL *searchURL = [NSURL URLWithString:url];
         [self.webView loadRequest:[NSURLRequest requestWithURL:searchURL]];
 	}
@@ -66,7 +66,7 @@
     
 	[super viewDidLoad];
 	
-	CGRect deviceBounds = [[UIApplication sharedApplication] keyWindow].bounds;
+	CGRect deviceBounds = [UIApplication sharedApplication].keyWindow.bounds;
 	UIColor *blueGreen = [UIColor colorWithRed:0.301f green:0.353f blue:0.384f alpha:1.0];
 
 	if(!deviceIsTablet) {
@@ -89,7 +89,7 @@
 			[navBar release];
             
 			navItem = [[UINavigationItem alloc] initWithTitle:self.title];
-			[navBar setItems:[NSArray arrayWithObject:navItem] animated:YES];
+			[navBar setItems:@[navItem] animated:YES];
 			[navItem release];
             
             toolbar = [[UIToolbar alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(self.view.bounds)-44, CGRectGetWidth(deviceBounds), 44)];
@@ -123,7 +123,7 @@
 			navItem.leftBarButtonItem = doneButton;
 			[doneButton release];
 			
-			[navBar setItems:[NSArray arrayWithObject:navItem] animated:YES];
+			[navBar setItems:@[navItem] animated:YES];
 			[navItem release];
 			
 			titleLeftOffset = [@"Done" sizeWithFont:[UIFont boldSystemFontOfSize:12]].width+33;
@@ -138,7 +138,7 @@
 			navBar.tintColor = blueGreen;
 
 			NSArray* viewCtrlers = self.navigationController.viewControllers;
-			UIViewController* prevCtrler = [viewCtrlers objectAtIndex:[viewCtrlers count]-2];
+			UIViewController* prevCtrler = viewCtrlers[viewCtrlers.count-2];
 			titleLeftOffset = [prevCtrler.navigationItem.backBarButtonItem.title sizeWithFont:[UIFont boldSystemFontOfSize:12]].width+26;
 		}
 		
@@ -304,12 +304,12 @@
 	else
 		navItem.title = [self.webView stringByEvaluatingJavaScriptFromString:@"document.title"];
 	
-	if(![self.webView canGoBack])
+	if(!(self.webView).canGoBack)
 		backBarButton.enabled = NO;
 	else
 		backBarButton.enabled = YES;
 	
-	if(![self.webView canGoForward])
+	if(!(self.webView).canGoForward)
 		forwardBarButton.enabled = NO;
 	else
 		forwardBarButton.enabled = YES;
@@ -331,9 +331,34 @@
         actionBarButton.enabled = YES;
 	else
         actionBarButton.enabled = NO;
-    
-	NSArray *newButtons = [NSArray arrayWithObjects:fixedSpace, backBarButton, flexSpace, forwardBarButton, flexSpace, refreshStopBarButton, flexSpace, actionBarButton, fixedSpace, nil];
-	[toolbar setItems:newButtons];
+
+    NSMutableArray *newButtons = [@[fixedSpace] mutableCopy];
+    if (backBarButton)
+    {
+        [newButtons addObjectsFromArray:@[backBarButton, flexSpace]];
+    }
+
+    if (forwardBarButton)
+    {
+        [newButtons addObjectsFromArray:@[forwardBarButton, flexSpace]];
+    }
+
+    if (refreshStopBarButton)
+    {
+        [newButtons addObjectsFromArray:@[refreshStopBarButton, flexSpace]];
+    }
+
+    if (actionBarButton)
+    {
+        [newButtons addObject:actionBarButton];
+    }
+
+    if (newButtons.count > 1)
+    {
+        [newButtons addObject:fixedSpace];
+    }
+
+	toolbar.items = newButtons;
     [toolbar sizeToFit];
     	
 	[refreshStopBarButton release];
@@ -346,23 +371,24 @@
 	
 	titleLabel.text = [self.webView stringByEvaluatingJavaScriptFromString:@"document.title"];
 	
-	if(![self.webView canGoBack])
+	if(!(self.webView).canGoBack)
 		backButton.enabled = NO;
 	else
 		backButton.enabled = YES;
 	
-	if(![self.webView canGoForward])
+	if (!(self.webView).canGoForward)
 		forwardButton.enabled = NO;
 	else
 		forwardButton.enabled = YES;
 	
-	if(self.webView.loading && !stoppedLoading) {
+	if(self.webView.loading && !stoppedLoading)
+    {
 		[refreshStopButton removeTarget:self.webView action:@selector(reload) forControlEvents:UIControlEventTouchUpInside];
 		[refreshStopButton addTarget:self action:@selector(stopLoading) forControlEvents:UIControlEventTouchUpInside];
 		[refreshStopButton setBackgroundImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPad/stop"] forState:UIControlStateNormal];
 	}
-	
-	else {
+	else
+    {
 		[refreshStopButton removeTarget:self action:@selector(stopLoading) forControlEvents:UIControlEventTouchUpInside];
 		[refreshStopButton addTarget:self.webView action:@selector(reload) forControlEvents:UIControlEventTouchUpInside];
 		[refreshStopButton setBackgroundImage:[UIImage imageNamed:@"SVWebViewController.bundle/iPad/refresh"] forState:UIControlStateNormal];
@@ -373,12 +399,13 @@
 #pragma mark -
 #pragma mark Orientation Support
 
-- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-	
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
+{
 	return YES;
 }
 
-- (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation duration:(NSTimeInterval)duration {
+- (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation duration:(NSTimeInterval)duration
+{
 	[self layoutSubviews];
 }
 
@@ -457,7 +484,7 @@
 		[actionSheet addButtonWithTitle:NSLocalizedString(@"Mail Link to this Page", @"SVWebViewController")];
 	
 	[actionSheet addButtonWithTitle:NSLocalizedString(@"Cancel",@"SVWebViewController")];
-	actionSheet.cancelButtonIndex = [actionSheet numberOfButtons]-1;
+	actionSheet.cancelButtonIndex = actionSheet.numberOfButtons-1;
 	
 	if(!deviceIsTablet)
 		[actionSheet showFromToolbar:toolbar];
@@ -486,7 +513,7 @@
 		
 		MFMailComposeViewController *emailComposer = [[MFMailComposeViewController alloc] init]; 
 		
-		[emailComposer setMailComposeDelegate: self]; 
+		emailComposer.mailComposeDelegate = self; 
         NSString *title = [self.webView stringByEvaluatingJavaScriptFromString:@"document.title"];
 		[emailComposer setSubject:title];
         
