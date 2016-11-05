@@ -24,10 +24,10 @@
 	BOOL deviceIsTablet, stoppedLoading;
 }
 
-@property (nonatomic, retain) UIWebView *webView;
-@property (nonatomic, retain) NSString *urlString;
-@property (nonatomic, assign) NSString *address;
-@property (nonatomic, retain) UIPopoverController *masterPopover;
+@property (nonatomic, strong) UIWebView *webView;
+@property (nonatomic, strong) NSString *urlString;
+@property (nonatomic, weak) NSString *address;
+@property (nonatomic, strong) UIPopoverController *masterPopover;
 
 - (instancetype)initWithAddress:(NSString*)string;
 
