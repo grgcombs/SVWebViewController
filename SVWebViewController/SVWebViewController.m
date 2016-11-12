@@ -51,7 +51,7 @@
         [masterPopover dismissPopoverAnimated:YES];
     }
 	
-	if (self.viewLoaded && rWebView && url && url.length) {
+    if (self.isViewLoaded && rWebView && url && url.length) {
         NSURL *searchURL = [NSURL URLWithString:url];
         [self.webView loadRequest:[NSURLRequest requestWithURL:searchURL]];
 	}
